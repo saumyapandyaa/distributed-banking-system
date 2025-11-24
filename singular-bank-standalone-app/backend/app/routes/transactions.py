@@ -181,6 +181,8 @@ def transfer_same_bank(
 # ----------------------------------------------------------
 # Cross-bank external transfer
 # ----------------------------------------------------------
+# app/routes/transactions.py (external_transfer section only)
+
 @router.post("/external-transfer")
 def external_transfer(
     request: schemas.ExternalTransferRequest,
@@ -217,15 +219,18 @@ def external_transfer(
     event = {
         "tx_id": tx.tx_id,
         "from_bank": origin_bank,
-        "destination_bank": request.destination_bank,
+        "destination_bank": request.destination_bank,  # e.g. "BANK2"
         "to_account": request.to_account,
         "amount": request.amount,
     }
 
-    # Don't let Kafka failure kill the whole request
     try:
-        publish_event(key=tx.tx_id, value=event)
+        publish_event(
+            key=f"{origin_bank}->{request.destination_bank}",
+            value=event,
+        )
     except Exception as e:
+        # Withdraw already committed – for lab, we just log the Kafka failure
         print(f"[KAFKA] Failed to publish event: {e}")
 
     return {"message": "External transfer sent", "tx_id": tx.tx_id}
