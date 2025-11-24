@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../api/apiClient";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Button } from "../components/ui/button";
 
 export default function SameBranchTransfer() {
   const { userId } = useParams();
@@ -17,7 +26,6 @@ export default function SameBranchTransfer() {
     }
 
     try {
-      // ✅ FIXED: correct backend endpoint
       await apiClient.post("/transactions/transfer-same-bank", {
         from_account: fromAcc,
         to_account: toAcc,
@@ -33,61 +41,63 @@ export default function SameBranchTransfer() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f1f8]">
-      <div className="bg-white p-8 rounded-xl shadow w-[400px]">
-        <h1 className="text-2xl font-bold mb-4">
-          Same-Bank Transfer
-        </h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-16">
+      <div className="absolute inset-x-0 top-8 mx-auto h-72 max-w-3xl rounded-3xl bg-glass-gradient blur-3xl" />
+      <div className="relative mx-auto w-full max-w-2xl">
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle className="text-3xl">Same-bank transfer</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Move funds between customers without leaving the branch network.
+            </p>
+          </CardHeader>
 
-        {/* From Account */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">From Account</label>
-          <input
-            className="w-full border rounded p-2"
-            placeholder="Enter source account number"
-            value={fromAcc}
-            onChange={(e) => setFromAcc(e.target.value)}
-          />
-        </div>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="from-account">From account</Label>
+              <Input
+                id="from-account"
+                placeholder="Source account number"
+                value={fromAcc}
+                onChange={(e) => setFromAcc(e.target.value)}
+              />
+            </div>
 
-        {/* To Account */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">To Account</label>
-          <input
-            className="w-full border rounded p-2"
-            placeholder="Enter destination account number"
-            value={toAcc}
-            onChange={(e) => setToAcc(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="to-account">To account</Label>
+              <Input
+                id="to-account"
+                placeholder="Destination account number"
+                value={toAcc}
+                onChange={(e) => setToAcc(e.target.value)}
+              />
+            </div>
 
-        {/* Amount */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Amount</label>
-          <input
-            className="w-full border rounded p-2"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="branch-amount">Amount</Label>
+              <Input
+                id="branch-amount"
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
 
-        {/* Buttons */}
-        <div className="flex justify-between">
-          <button
-            className="text-gray-600"
-            onClick={() => navigate(`/users/${userId}/transfer`)}
-          >
-            Cancel
-          </button>
-
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={handleTransfer}
-          >
-            Confirm Transfer
-          </button>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                className="flex-1 text-muted-foreground"
+                onClick={() => navigate(`/users/${userId}/transfer`)}
+              >
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleTransfer}>
+                Confirm transfer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

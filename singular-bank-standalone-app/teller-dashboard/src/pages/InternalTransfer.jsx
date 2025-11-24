@@ -1,7 +1,27 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { getUserAccounts } from "../api/tellerApi";
 import apiClient from "../api/apiClient";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+
+const meta = {
+  checking: {
+    label: "Checking",
+    blurb: "Daily spending · Instant clearing",
+  },
+  savings: {
+    label: "Savings",
+    blurb: "Conservative · Higher balance",
+  },
+};
 
 export default function InternalTransfer() {
   const { userId } = useParams();
@@ -24,6 +44,14 @@ export default function InternalTransfer() {
     load();
   }, [userId]);
 
+  const accountByType = useMemo(() => {
+    const map = {};
+    accounts.forEach((acc) => {
+      map[acc.account_type] = acc;
+    });
+    return map;
+  }, [accounts]);
+
   const handleTransfer = async () => {
     if (fromType === toType) {
       alert("Cannot transfer to the same account type.");
@@ -31,7 +59,6 @@ export default function InternalTransfer() {
     }
 
     try {
-      // ✔ FIXED ENDPOINT
       await apiClient.post("/transactions/transfer-internal", {
         user_id: userId,
         from_account_type: fromType,
@@ -47,69 +74,92 @@ export default function InternalTransfer() {
     }
   };
 
+  const renderAccountOption = (type, isActive, onSelect) => {
+    const account = accountByType[type];
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(type)}
+        className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+          isActive
+            ? "border-primary bg-primary/5 shadow-soft-card"
+            : "border-dashed border-slate-200 hover:border-slate-300"
+        }`}
+      >
+        <p className="text-sm font-semibold text-slate-900">{meta[type].label}</p>
+        <p className="text-xs text-muted-foreground">{meta[type].blurb}</p>
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {account
+            ? `Acct •••${String(account.account_number).slice(-4)} · $${account.balance}`
+            : "Not available"}
+        </p>
+      </button>
+    );
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f1f8]">
-      <div className="bg-white p-8 rounded-xl shadow w-[400px]">
-        <h1 className="text-2xl font-bold mb-4">
-          Internal Transfer – User {userId}
-        </h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-16">
+      <div className="absolute inset-x-0 top-10 mx-auto h-64 max-w-4xl rounded-3xl bg-glass-gradient blur-3xl" />
+      <div className="relative mx-auto w-full max-w-3xl">
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle className="text-3xl">Internal transfer</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Move balances between accounts for user #{userId}.
+            </p>
+          </CardHeader>
 
-        {/* FROM ACCOUNT */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">From Account</label>
-          <select
-            className="w-full border rounded p-2"
-            value={fromType}
-            onChange={(e) => {
-              setFromType(e.target.value);
-              setToType(e.target.value === "checking" ? "savings" : "checking");
-            }}
-          >
-            <option value="checking">Checking</option>
-            <option value="savings">Savings</option>
-          </select>
-        </div>
+          <CardContent className="space-y-8">
+            <div className="space-y-3">
+              <Label className="uppercase tracking-[0.35em] text-[11px] text-muted-foreground">
+                From account
+              </Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {["checking", "savings"].map((type) =>
+                  renderAccountOption(type, fromType === type, (selected) => {
+                    setFromType(selected);
+                    setToType(selected === "checking" ? "savings" : "checking");
+                  })
+                )}
+              </div>
+            </div>
 
-        {/* TO ACCOUNT */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">To Account</label>
-          <select
-            className="w-full border rounded p-2"
-            value={toType}
-            onChange={(e) => setToType(e.target.value)}
-          >
-            <option value="checking">Checking</option>
-            <option value="savings">Savings</option>
-          </select>
-        </div>
+            <div className="space-y-3">
+              <Label className="uppercase tracking-[0.35em] text-[11px] text-muted-foreground">
+                To account
+              </Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {["checking", "savings"].map((type) =>
+                  renderAccountOption(type, toType === type, setToType)
+                )}
+              </div>
+            </div>
 
-        {/* AMOUNT */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Amount</label>
-          <input
-            className="w-full border rounded p-2"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="internal-amount">Amount</Label>
+              <Input
+                id="internal-amount"
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
 
-        {/* BUTTONS */}
-        <div className="flex justify-between">
-          <button
-            className="text-gray-600"
-            onClick={() => navigate(`/users/${userId}/transfer`)}
-          >
-            Cancel
-          </button>
-
-          <button
-            className="bg-purple-600 text-white px-4 py-2 rounded"
-            onClick={handleTransfer}
-          >
-            Confirm Transfer
-          </button>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                className="flex-1 text-muted-foreground"
+                onClick={() => navigate(`/users/${userId}/transfer`)}
+              >
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleTransfer}>
+                Confirm transfer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

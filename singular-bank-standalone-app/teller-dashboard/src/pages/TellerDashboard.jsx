@@ -9,6 +9,16 @@ import {
   deleteCard,
 } from "../api/tellerApi";
 import StatsChart from "../components/StatsChart";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 export default function TellerDashboard() {
   const { userId } = useParams();
@@ -181,211 +191,327 @@ export default function TellerDashboard() {
    * Wallet UI (3-card stack, fully visible)
    * ----------------------------------------- */
   const renderWallet = () => (
-    <div className="bg-white rounded-xl shadow p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">My Wallet</h2>
-
-        <div className="flex gap-3">
-          <button
+    <Card className="glass-panel h-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="text-lg">My wallet</CardTitle>
+          <CardDescription>Issued payment cards</CardDescription>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isCardLoading}
             onClick={() => handleAddCard("credit")}
-            className="px-4 py-1 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100"
           >
             + Credit
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isCardLoading}
             onClick={() => handleAddCard("prepaid")}
-            className="px-4 py-1 bg-emerald-50 text-emerald-700 rounded-full hover:bg-emerald-100"
           >
             + Prepaid
-          </button>
+          </Button>
         </div>
-      </div>
-
-      {/* H = large enough for 3 stacked cards */}
-      <div className="relative h-[360px] w-[360px]">
-
-        {/* BACK CARDS */}
-        {orderedCards.slice(1).map((card, i) => (
-          <div
-            key={card.id}
-            className={`absolute w-[310px] h-[180px] rounded-3xl ${cardBg(
-              card.card_type
-            )} text-white shadow-xl cursor-pointer`}
-            style={{
-              top: 50 + i * 35,
-              left: 35 + i * 25,
-              zIndex: 10 - i,
-              opacity: 0.75,
-            }}
-            onClick={() => setSelectedCardId(card.id)}
-          >
-            <div className="p-5 flex flex-col justify-between h-full">
-              <div>
-                <div className="text-xs">{cardLabel(card.card_type)}</div>
-                <div className="text-sm mt-1">VISA</div>
+      </CardHeader>
+      <CardContent>
+        {orderedCards.length ? (
+          <div className="relative mx-auto mt-4 h-[330px] w-full max-w-[340px]">
+            {orderedCards.slice(1).map((card, i) => (
+              <div
+                key={card.id}
+                className={`absolute flex h-[170px] w-[300px] cursor-pointer flex-col justify-between rounded-3xl p-5 text-white shadow-xl ${cardBg(
+                  card.card_type
+                )}`}
+                style={{
+                  top: 40 + i * 30,
+                  left: 30 + i * 20,
+                  zIndex: 10 - i,
+                  opacity: 0.7,
+                }}
+                onClick={() => setSelectedCardId(card.id)}
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.35em]">
+                  {cardLabel(card.card_type)}
+                </div>
+                <div className="text-xs">EXP {card.expiry}</div>
               </div>
-              <div className="text-xs">EXP {card.expiry}</div>
-            </div>
-          </div>
-        ))}
+            ))}
 
-        {/* FRONT CARD */}
-        {selectedCard && (
-          <div
-            className={`absolute w-[330px] h-[200px] rounded-3xl ${cardBg(
-              selectedCard.card_type
-            )} text-white shadow-2xl cursor-pointer z-[99]`}
-            style={{ top: 0, left: 0 }}
-            onClick={() => setSelectedCardId(selectedCard.id)}
-          >
-            <div className="p-6 flex flex-col justify-between h-full">
-              <div className="flex justify-between">
-                <div>
-                  <div className="text-xs">{cardLabel(selectedCard.card_type)}</div>
-                  <div className="text-sm">VISA</div>
+            {selectedCard && (
+              <div
+                className={`absolute flex h-[190px] w-[320px] cursor-pointer flex-col justify-between rounded-3xl p-6 text-white shadow-2xl ${cardBg(
+                  selectedCard.card_type
+                )}`}
+                style={{ top: 0, left: 0, zIndex: 20 }}
+                onClick={() => setSelectedCardId(selectedCard.id)}
+              >
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em]">
+                  <span>{cardLabel(selectedCard.card_type)}</span>
+                  {selectedCard.card_type === "debit" && (
+                    <Badge
+                      variant="outline"
+                      className="border-white/70 bg-white/10 text-[10px] text-white"
+                    >
+                      Default
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-lg tracking-[0.35em]">
+                  {selectedCard.card_number}
                 </div>
 
-                {selectedCard.card_type === "debit" && (
-                  <span className="px-3 py-1 rounded-full bg-slate-700/70 border border-slate-500 text-[11px]">
-                    Default
-                  </span>
+                <div className="flex justify-between text-xs">
+                  <div>
+                    <p className="text-white/70">EXP</p>
+                    <p>{selectedCard.expiry}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/70">CVV</p>
+                    <p>{selectedCard.cvv}</p>
+                  </div>
+                </div>
+
+                {selectedCard.card_type !== "debit" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 border-white/60 text-xs text-white hover:bg-white/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSelectedCard(selectedCard);
+                    }}
+                    disabled={isCardLoading}
+                  >
+                    Delete card
+                  </Button>
                 )}
               </div>
-
-              <div className="tracking-[0.25em] text-lg mt-2">
-                {selectedCard.card_number}
-              </div>
-
-              <div className="flex justify-between text-xs mt-2">
-                <div>
-                  <p className="text-gray-300">EXP</p>
-                  <p>{selectedCard.expiry}</p>
-                </div>
-                <div>
-                  <p className="text-gray-300">CVV</p>
-                  <p>{selectedCard.cvv}</p>
-                </div>
-              </div>
-
-              {selectedCard.card_type !== "debit" && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSelectedCard(selectedCard);
-                  }}
-                  className="mt-3 px-4 py-1 border border-red-500 text-red-500 rounded-full text-xs hover:bg-red-50"
-                >
-                  Delete card
-                </button>
-              )}
-            </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-muted-foreground">
+            {isCardLoading ? "Loading cards..." : "No cards issued yet"}
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
   /* ------------------------------------------
    * MAIN LAYOUT
    * ----------------------------------------- */
   return (
-    <div className="min-h-screen flex bg-[#f3f1f8]">
-      
-      {/* SIDEBAR */}
-      <div className="w-64 bg-white h-screen p-6 flex flex-col border-r">
-        <h2 className="text-xl font-bold mb-8">User: {userId}</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-8">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl gap-6 lg:grid-cols-[280px_1fr]">
+        <aside className="space-y-6">
+          <Card className="glass-panel">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-xl">User overview</CardTitle>
+              <CardDescription>Act on behalf of the customer</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-200/80 p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
+                  {String(userId).slice(-2)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    User #{userId}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentAccount
+                      ? `${selectedType} · ${currentAccount.account_number}`
+                      : "No active accounts"}
+                  </p>
+                </div>
+              </div>
 
-        <nav className="flex flex-col gap-5 text-gray-700">
-          <button onClick={() => navigate(`/users/${userId}/deposit`)}>Deposit</button>
-          <button onClick={() => navigate(`/users/${userId}/withdraw`)}>Withdraw</button>
-          <button onClick={() => navigate(`/users/${userId}/transfer`)}>Transfer</button>
-        </nav>
+              <div className="space-y-2">
+                <Button
+                  className="w-full justify-start"
+                  variant="secondary"
+                  onClick={() => navigate(`/users/${userId}/deposit`)}
+                >
+                  Deposit funds
+                </Button>
+                <Button
+                  className="w-full justify-start"
+                  variant="secondary"
+                  onClick={() => navigate(`/users/${userId}/withdraw`)}
+                >
+                  Withdraw cash
+                </Button>
+                <Button
+                  className="w-full justify-start"
+                  variant="secondary"
+                  onClick={() => navigate(`/users/${userId}/transfer`)}
+                >
+                  Transfer money
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-        <div className="mt-auto text-sm">
-          <button onClick={() => navigate("/ledger")}>← Back to Ledger</button>
-        </div>
+          <Card className="glass-panel">
+            <CardHeader>
+              <CardTitle className="text-base">Session</CardTitle>
+              <CardDescription>Save progress & revisit the ledger</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate("/ledger")}
+              >
+                ← Back to Ledger
+              </Button>
+            </CardContent>
+          </Card>
+        </aside>
+
+        <section className="space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.35em] text-muted-foreground">
+                Teller dashboard
+              </p>
+              <h1 className="text-3xl font-semibold text-slate-900">
+                Customer snapshot
+              </h1>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedType === "checking" ? "default" : "outline"}
+                onClick={() => setSelectedType("checking")}
+              >
+                Checking
+              </Button>
+              <Button
+                variant={selectedType === "savings" ? "default" : "outline"}
+                onClick={() => setSelectedType("savings")}
+              >
+                Savings
+              </Button>
+            </div>
+          </div>
+
+          {currentAccount && (
+            <Card className="overflow-hidden border-none bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 text-white shadow-soft-card">
+              <CardContent className="space-y-4 p-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm uppercase tracking-[0.35em] text-white/70">
+                    Total balance
+                  </p>
+                  <Badge className="bg-white/20 text-xs text-white">
+                    Account · {currentAccount.account_number}
+                  </Badge>
+                </div>
+                <p className="text-4xl font-semibold">${currentAccount.balance}</p>
+                <p className="text-sm text-white/70">
+                  Last refreshed · {new Date().toLocaleTimeString()}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="glass-panel lg:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Statistics</CardTitle>
+                <CardDescription>Money in vs. money out</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[320px]">
+                <StatsChart
+                  transactions={transactions}
+                  currentBalance={currentAccount?.balance}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="glass-panel">
+              <CardHeader>
+                <CardTitle className="text-lg">Transactions</CardTitle>
+                <CardDescription>Most recent activity</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[320px]">
+                <ScrollArea className="h-full pr-2">
+                  <div className="space-y-3">
+                    {transactions.length ? (
+                      transactions.map((t, i) => (
+                        <div
+                          key={`${t.tx_type}-${i}`}
+                          className="flex items-center justify-between rounded-xl border border-slate-100/80 px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">
+                              {t.tx_type}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t.timestamp?.slice(0, 10) || "—"}
+                            </p>
+                          </div>
+                          <p
+                            className={`text-sm font-semibold ${
+                              t.amount >= 0 ? "text-emerald-600" : "text-red-500"
+                            }`}
+                          >
+                            {t.amount >= 0 ? "+" : ""}
+                            {t.amount}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No activity recorded yet.
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">{renderWallet()}</div>
+
+            <Card className="glass-panel">
+              <CardHeader>
+                <CardTitle className="text-lg">Accounts overview</CardTitle>
+                <CardDescription>Balance by type</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {accounts.length ? (
+                  accounts.map((acc) => (
+                    <div
+                      key={acc.account_number}
+                      className="rounded-2xl border border-slate-100/70 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold capitalize">
+                            {acc.account_type}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Acct · {acc.account_number}
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold">${acc.balance}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No accounts found for this user.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </section>
       </div>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 p-8 flex flex-col gap-6">
-
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-
-          <div className="flex gap-2 bg-white rounded-full p-1 shadow">
-            <button
-              className={`px-4 py-2 rounded-full text-sm ${
-                selectedType === "checking" ? "bg-blue-600 text-white" : "text-gray-600"
-              }`}
-              onClick={() => setSelectedType("checking")}
-            >
-              Checking
-            </button>
-
-            <button
-              className={`px-4 py-2 rounded-full text-sm ${
-                selectedType === "savings" ? "bg-blue-600 text-white" : "text-gray-600"
-              }`}
-              onClick={() => setSelectedType("savings")}
-            >
-              Savings
-            </button>
-          </div>
-        </div>
-
-        {/* ACCOUNT SUMMARY */}
-        {currentAccount && (
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold mb-1">Total Balance</h2>
-            <p className="text-3xl font-bold">${currentAccount.balance}</p>
-            <p className="text-gray-400 text-sm">
-              Account No: {currentAccount.account_number}
-            </p>
-          </div>
-        )}
-
-<div className="grid grid-cols-3 gap-6 min-h-[50px]">
-
-{/* STATISTICS spans row 1 and 2 */}
-<div className="col-span-2 row-span-2 bg-white rounded-xl shadow p-4 flex flex-col">
-  <h3 className="font-semibold mb-2">Statistics</h3>
-  <div className="flex-1">
-    <StatsChart
-      transactions={transactions}
-      currentBalance={currentAccount?.balance}
-    />
-  </div>
-</div>
-
-{/* TRANSACTIONS stays in row 1 */}
-<div className="bg-white rounded-xl shadow p-4 h-[240px] overflow-y-auto col-start-3 row-start-1">
-  <h3 className="font-semibold mb-2">Transactions</h3>
-  {transactions.map((t, i) => (
-    <div
-      key={i}
-      className="flex justify-between border-b py-1 last:border-b-0 text-sm"
-    >
-      <span>{t.tx_type}</span>
-      <span className={t.amount >= 0 ? "text-green-600" : "text-red-500"}>
-        {t.amount >= 0 ? "+" : ""}
-        {t.amount}
-      </span>
-    </div>
-  ))}
-</div>
-
-{/* WALLET always stays below Transactions */}
-<div className="col-start-3 row-start-2">
-  {renderWallet()}
-</div>
-
-</div>
-
-
-
-          
-        </div>
     </div>
   );
 }

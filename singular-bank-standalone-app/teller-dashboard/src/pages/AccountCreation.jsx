@@ -1,5 +1,14 @@
 import { useState } from "react";
 import { createAccount } from "../api/tellerApi";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Button } from "../components/ui/button";
 
 export default function AccountCreation() {
   const [accNum, setAccNum] = useState("");
@@ -19,32 +28,49 @@ export default function AccountCreation() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Create Account</h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-16">
+      <div className="absolute inset-x-0 top-12 mx-auto h-72 max-w-2xl rounded-3xl bg-glass-gradient blur-3xl" />
+      <div className="relative mx-auto w-full max-w-xl">
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle className="text-3xl">Create account</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Provision a new standalone account with an opening balance.
+            </p>
+          </CardHeader>
 
-      <div className="space-y-4">
-        <input
-          className="border p-2 rounded w-64"
-          placeholder="Account Number"
-          value={accNum}
-          onChange={e => setAccNum(e.target.value)}
-        />
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="account-number">Account number</Label>
+              <Input
+                id="account-number"
+                placeholder="12-digit account number"
+                value={accNum}
+                onChange={(e) => setAccNum(e.target.value)}
+              />
+            </div>
 
-        <input
-          className="border p-2 rounded w-64"
-          placeholder="Initial Balance"
-          type="number"
-          value={initialBalance}
-          onChange={e => setInitialBalance(e.target.value)}
-        />
+            <div className="space-y-2">
+              <Label htmlFor="initial-balance">Initial balance</Label>
+              <Input
+                id="initial-balance"
+                type="number"
+                placeholder="0.00"
+                value={initialBalance}
+                onChange={(e) => setInitialBalance(e.target.value)}
+              />
+            </div>
 
-        <button
-          onClick={handleCreate}
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Create Account
-        </button>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-600/90"
+              onClick={handleCreate}
+            >
+              Create account
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
+

@@ -1,7 +1,28 @@
 // src/pages/Deposit.jsx
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getUserAccounts, deposit } from "../api/tellerApi";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { deposit, getUserAccounts } from "../api/tellerApi";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+
+const accountCopy = {
+  checking: {
+    title: "Checking",
+    description: "High-volume transactional account",
+  },
+  savings: {
+    title: "Savings",
+    description: "Earn interest on stored funds",
+  },
+};
 
 export default function Deposit() {
   const { userId } = useParams();
@@ -23,70 +44,107 @@ export default function Deposit() {
     load();
   }, [userId]);
 
+  const activeAccount = useMemo(
+    () => accounts.find((acc) => acc.account_type === accountType),
+    [accounts, accountType]
+  );
+
   const handleDeposit = async () => {
-    const selectedAccount = accounts.find(
-      (a) => a.account_type === accountType
-    );
-  
-    if (!selectedAccount) {
+    if (!activeAccount) {
       alert("Account not found.");
       return;
     }
-  
+
     try {
-      await deposit(selectedAccount.account_number, Number(amount));
+      await deposit(activeAccount.account_number, Number(amount));
       alert("Deposit successful!");
-      navigate(`/users/${userId}/dashboard`);  // ← correct route
+      navigate(`/users/${userId}/dashboard`);
     } catch (error) {
       console.error(error);
       alert("Deposit failed.");
     }
   };
-  
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f1f8]">
-      <div className="bg-white p-8 rounded-xl shadow w-[400px]">
-        <h1 className="text-2xl font-bold mb-4">
-          Deposit – User {userId}
-        </h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-16">
+      <div className="pointer-events-none absolute inset-x-0 top-10 mx-auto h-64 max-w-xl rounded-3xl bg-glass-gradient blur-3xl" />
+      <div className="relative mx-auto w-full max-w-3xl">
+        <Card className="glass-panel">
+          <CardHeader className="pb-6">
+            <Badge className="w-fit uppercase tracking-[0.35em]" variant="outline">
+              Deposit
+            </Badge>
+            <CardTitle className="text-3xl">Fund customer balance</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              User #{userId} · Select an account type and provide the credit
+              amount.
+            </p>
+          </CardHeader>
 
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Account Type</label>
-          <select
-            className="w-full border rounded p-2"
-            value={accountType}
-            onChange={(e) => setAccountType(e.target.value)}
-          >
-            <option value="checking">Checking</option>
-            <option value="savings">Savings</option>
-          </select>
-        </div>
+          <CardContent className="space-y-8">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                Account type
+              </span>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {["checking", "savings"].map((type) => {
+                  const info = accountCopy[type];
+                  const account = accounts.find(
+                    (acc) => acc.account_type === type
+                  );
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setAccountType(type)}
+                      className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+                        accountType === type
+                          ? "border-primary bg-primary/5 shadow-soft-card"
+                          : "border-dashed border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {info.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {info.description}
+                      </p>
+                      <p className="mt-3 text-[13px] text-muted-foreground">
+                        {account
+                          ? `Balance: $${account.balance}`
+                          : "No account provisioned"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Amount</label>
-          <input
-            className="w-full border rounded p-2"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
 
-        <div className="flex justify-between">
-          <button
-            className="text-gray-600"
-            onClick={() => navigate(`/users/${userId}/dashboard`)}
-          >
-            Cancel
-          </button>
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={handleDeposit}
-          >
-            Confirm
-          </button>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                className="flex-1 text-muted-foreground"
+                onClick={() => navigate(`/users/${userId}/dashboard`)}
+              >
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleDeposit}>
+                Confirm deposit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

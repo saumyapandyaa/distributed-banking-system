@@ -1,7 +1,28 @@
 // src/pages/Withdraw.jsx
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { getUserAccounts, withdraw } from "../api/tellerApi";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+
+const accountCopy = {
+  checking: {
+    title: "Checking",
+    description: "Real-time transactions",
+  },
+  savings: {
+    title: "Savings",
+    description: "Slower, higher balance",
+  },
+};
 
 export default function Withdraw() {
   const { userId } = useParams();
@@ -23,18 +44,19 @@ export default function Withdraw() {
     load();
   }, [userId]);
 
-  const handleWithdraw = async () => {
-    const selectedAccount = accounts.find(
-      (a) => a.account_type === accountType
-    );
+  const activeAccount = useMemo(
+    () => accounts.find((acc) => acc.account_type === accountType),
+    [accounts, accountType]
+  );
 
-    if (!selectedAccount) {
+  const handleWithdraw = async () => {
+    if (!activeAccount) {
       alert("Account not found.");
       return;
     }
 
     try {
-      await withdraw(selectedAccount.account_number, Number(amount));
+      await withdraw(activeAccount.account_number, Number(amount));
       alert("Withdrawal successful!");
       navigate(`/users/${userId}/dashboard`);
     } catch (error) {
@@ -44,53 +66,89 @@ export default function Withdraw() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f1f8]">
-      <div className="bg-white p-8 rounded-xl shadow w-[400px]">
-        <h1 className="text-2xl font-bold mb-4">
-          Withdraw – User {userId}
-        </h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-16">
+      <div className="pointer-events-none absolute inset-x-0 top-10 mx-auto h-64 max-w-xl rounded-3xl bg-rose-200/40 blur-3xl" />
+      <div className="relative mx-auto w-full max-w-3xl">
+        <Card className="glass-panel">
+          <CardHeader className="pb-6">
+            <Badge className="w-fit uppercase tracking-[0.35em]" variant="warning">
+              Withdraw
+            </Badge>
+            <CardTitle className="text-3xl">Release customer funds</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              User #{userId} · Choose the source account then confirm the debit.
+            </p>
+          </CardHeader>
 
-        {/* Account Type */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Account Type</label>
-          <select
-            className="w-full border rounded p-2"
-            value={accountType}
-            onChange={(e) => setAccountType(e.target.value)}
-          >
-            <option value="checking">Checking</option>
-            <option value="savings">Savings</option>
-          </select>
-        </div>
+          <CardContent className="space-y-8">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                Account type
+              </span>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {["checking", "savings"].map((type) => {
+                  const info = accountCopy[type];
+                  const account = accounts.find(
+                    (acc) => acc.account_type === type
+                  );
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setAccountType(type)}
+                      className={`rounded-2xl border px-4 py-4 text-left transition-all ${
+                        accountType === type
+                          ? "border-destructive/60 bg-destructive/5 shadow-soft-card"
+                          : "border-dashed border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {info.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {info.description}
+                      </p>
+                      <p className="mt-3 text-[13px] text-muted-foreground">
+                        {account
+                          ? `Balance: $${account.balance}`
+                          : "No account provisioned"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* Amount */}
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Amount</label>
-          <input
-            className="w-full border rounded p-2"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="withdraw-amount">Amount</Label>
+              <Input
+                id="withdraw-amount"
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
 
-        {/* Buttons */}
-        <div className="flex justify-between">
-          <button
-            className="text-gray-600"
-            onClick={() => navigate(`/users/${userId}/dashboard`)}
-          >
-            Cancel
-          </button>
-
-          <button
-            className="bg-red-600 text-white px-4 py-2 rounded"
-            onClick={handleWithdraw}
-          >
-            Confirm
-          </button>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <Button
+                variant="ghost"
+                className="flex-1 text-muted-foreground"
+                onClick={() => navigate(`/users/${userId}/dashboard`)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 border border-destructive bg-destructive text-white hover:bg-destructive/90"
+                onClick={handleWithdraw}
+              >
+                Confirm withdrawal
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
+
