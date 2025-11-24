@@ -1,18 +1,14 @@
-# head-bank-backend/schemas.py
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
 from datetime import datetime
-
 
 class BankBase(BaseModel):
     bank_id: str
     name: Optional[str] = None
     base_url: Optional[HttpUrl] = None
 
-
 class BankCreate(BankBase):
     pass
-
 
 class BankRead(BankBase):
     id: int
@@ -20,4 +16,4 @@ class BankRead(BankBase):
     created_at: datetime
 
     class Config:
-        from_attributes = True  # Pydantic v2
+        from_attributes = True

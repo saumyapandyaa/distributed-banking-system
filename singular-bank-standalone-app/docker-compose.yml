@@ -2,12 +2,12 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: single-bank-backend
+    container_name: single-bank-backend-${BANK_ID}
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT}:8000" # 👈 dynamic host port
     environment:
-      - BANK_ID=BANK1
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - BANK_ID=${BANK_ID}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka-${BANK_ID}:9092
     depends_on:
       kafka:
         condition: service_healthy
@@ -17,34 +17,35 @@ services:
   frontend:
     build:
       context: ./teller-dashboard
-    container_name: single-bank-frontend
+    container_name: single-bank-frontend-${BANK_ID}
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT}:80" # 👈 dynamic host port
     depends_on:
       - backend
 
   zookeeper:
     image: wurstmeister/zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
+    container_name: zookeeper-${BANK_ID}
+    # no host port needed; only used inside this compose network
+    ports: []
+    # or omit `ports:` entirely
 
   kafka:
     image: wurstmeister/kafka
-    container_name: kafka
-    ports:
-      - "9092:9092"
+    container_name: kafka-${BANK_ID}
+    # no host port needed either – only backend talks to it over docker network
+    ports: []
     environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-${BANK_ID}:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-${BANK_ID}:9092
+      KAFKA_ADVERTISED_HOST_NAME: kafka-${BANK_ID}
       KAFKA_BROKER_ID: 1
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
       - zookeeper
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka/9092"]
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/kafka-${BANK_ID}/9092"]
       interval: 5s
       timeout: 5s
       retries: 10

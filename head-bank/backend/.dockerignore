@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual env
+venv/
+.venv/
+
+# Git & metadata
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local DB files (don’t bake your dev DB into the image)
+headbank.db
+*.db
+
+# Logs
+*.log

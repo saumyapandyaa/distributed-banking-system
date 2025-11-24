@@ -1,0 +1,38 @@
+# --- Python / FastAPI ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+
+# Virtual environments
+venv/
+.env/
+.env.local
+.venv/
+
+# Local SQLite DBs
+head-bank/backend/headbank.db
+singular-bank-standalone-app/backend/*.db
+
+# --- Node / React (teller dashboard, future head-bank frontend) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+dist/
+build/
+.cache/
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Docker ---
+*.pid
+docker-compose.override.yml
