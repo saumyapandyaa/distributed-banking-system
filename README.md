@@ -1,374 +1,151 @@
+# Distributed Banking System
 
-# Multi-Bank Distributed App
+Event-driven multi-bank architecture with cross-bank transfers via Apache Kafka.
 
-A small **distributed banking system** built for a Distributed Systems course.
-
-The project simulates **multiple independent banks** (Bank 1, Bank 2, …).  
-Each bank runs its **own backend, database, and teller UI**, and banks
-communicate via **Apache Kafka** for cross-bank money transfers.
+This project simulates independent banking nodes that communicate asynchronously through a distributed messaging backbone. Each bank operates as an isolated service with its own database, API, and frontend.
 
 ---
 
-## 1. Tech Stack
+##  System Architecture
 
-**Backend**
+```mermaid
+flowchart LR
+A[Bank A Backend] -->|Publish Event| K[Kafka Topic: external-transfers]
+K -->|Consume Event| B[Bank B Backend]
+A --> DA[(Bank A Database)]
+B --> DB[(Bank B Database)]
+```
 
-- Python 3.11  
-- FastAPI (REST APIs, JWT auth)
-- SQLAlchemy + SQLite (per-bank DB)
-- kafka-python (Kafka producer/consumer)
-- Docker
+Each bank runs independently:
 
-**Frontend**
+- FastAPI backend  
+- SQLite database (accessed via SQLAlchemy ORM)  
+- React teller/admin dashboard  
+- Kafka producer and consumer  
 
-- React (teller / admin dashboard)
-- Nginx (serves built React app in container)
+Banks do **not** share databases. Communication occurs exclusively via Kafka events.
 
-**Messaging / Infrastructure**
+---
 
-- Apache Kafka (Wurstmeister image)
+##  Consistency Model
+
+### Same-Bank Operations
+
+- Strong consistency  
+- ACID transactions enforced at the persistence layer (SQLite via SQLAlchemy)  
+- Synchronous REST execution  
+- Atomic balance updates inside transactional boundaries  
+
+Financial operations (deposit, withdraw, internal transfer) are wrapped in database transactions to prevent partial writes and maintain account integrity.
+
+---
+
+### Cross-Bank Transfers
+
+- Event-driven architecture  
+- Eventual consistency  
+- Durable messaging via Kafka  
+- Consumer offset replay for fault recovery  
+
+Cross-bank transfers are handled asynchronously to preserve loose coupling and fault isolation.
+
+---
+
+##  Concurrency & Idempotency
+
+### Concurrency Handling
+
+- SQLite enforces transactional guarantees and write serialization.
+- SQLAlchemy manages atomic transactions using session boundaries.
+- Concurrent requests modifying the same account are safely serialized by the database engine.
+
+This ensures balance updates remain consistent even under simultaneous requests.
+
+---
+
+### Idempotency Handling (Cross-Bank Events)
+
+Kafka provides **at-least-once delivery**, meaning events may be replayed during failures.
+
+To prevent duplicate credits:
+
+- Each cross-bank transfer includes a unique `transaction_id`.
+- The receiving bank checks whether the `transaction_id` already exists in its transaction log.
+- If the transaction has already been processed, the event is ignored.
+- If not, the transfer is applied and recorded.
+
+This guarantees safe replay handling and prevents double-credit scenarios.
+
+---
+
+##  Tech Stack
+
+Backend:
+- Python 3.11
+- FastAPI
+- SQLAlchemy ORM
+- SQLite
+- kafka-python
+- JWT-based authentication
+
+Frontend:
+- React
+- Nginx (containerized)
+
+Infrastructure:
+- Apache Kafka
 - Zookeeper
-- Docker Compose (multi-container orchestration)
+- Docker Compose
 
 ---
 
-## 2. Project Overview
+##  Running Locally
 
-Each bank node is an **independent server**:
+Clone repository:
+```
+git clone https://github.com/saumyapandyaa/distributed-banking-system.git  
+cd distributed-banking-system  
+```
 
-- Own FastAPI backend
-- Own SQLite database
-- Own React teller/admin UI
-- Own bank admin(s) and customers
+Build containers:
 
-Banks **do not share a database**.  
-Cross-bank transfers are implemented via **Kafka events**.
+```
+docker compose build  
+```
 
-### Supported operations
+Start the system:
+```
+docker compose up -d  
+```
 
-- Admin login (JWT based, per bank)
-- User (customer) management
-- Account creation (checking/savings) with balances
-- Same-bank operations:
-  - Deposit, withdraw
-  - Internal transfer (checking ↔ savings)
-  - User-to-user transfer within the same bank
-- Cross-bank external transfer:
-  - Bank A debits its local account and publishes an event to Kafka
-  - Bank B consumes the event and credits its own local account
+Access services:
 
-This makes the system **distributed**, **loosely coupled**, and **fault isolated**:
-each bank can fail or scale independently, with Kafka as the messaging backbone.
+Bank 1 API → [http://localhost:8001/docs](http://localhost:8001/docs)  
+Bank 2 API → [http://localhost:8002/docs](http://localhost:8002/docs)  
+Bank 1 UI → [http://localhost:3001](http://localhost:3001)  
+Bank 2 UI → [http://localhost:3002](http://localhost:3002)  
 
 ---
 
-## 3. Repository Structure
+## What This Project Demonstrates
 
-```text
-multi-bank-distributed-app/
-├── README.md
-└── singular-bank-standalone-app/
-    ├── backend/              # FastAPI app
-    │   └── app/
-    │       ├── main.py
-    │       ├── models.py
-    │       ├── schemas.py
-    │       ├── db.py
-    │       ├── kafka_producer.py
-    │       ├── kafka_consumer.py
-    │       ├── auth/
-    │       └── routes/
-    ├── teller-dashboard/     # React teller/admin UI
-    └── docker-compose.yml    # Multi-container setup for 2 banks + Kafka + Zookeeper
-```
+- Event-driven architecture  
+- Distributed messaging with Kafka  
+- Strong vs eventual consistency modeling  
+- Idempotent event handling  
+- Transactional concurrency control  
+- JWT-based role separation  
+- Containerized microservices  
+- Clean separation between persistence and communication layers  
 
 ---
 
-## 4. Getting Started
-
-### 4.1. Prerequisites
-
-- **Git**
-- **Docker Desktop** (or Docker Engine with Docker Compose v2)
-- Free ports on host:
-  - Frontends: `3001`, `3002`
-  - Backends: `8001`, `8002`
-  - Kafka/Zookeeper: `9092`, `2181`
-
----
-
-### 4.2. Clone the repository
-
-```bash
-git clone https://github.com/saumyapandyaa/multi-bank-distributed-app.git
-cd multi-bank-distributed-app/singular-bank-standalone-app
-```
-
-All commands below assume you are inside `singular-bank-standalone-app`.
-
----
-
-### 4.3. Build and run with Docker
-
-#### 4.3.1. Build images
-
-```bash
-docker compose build
-```
-
-This builds:
-
-- `bank1-backend`, `bank2-backend`
-- `bank1-frontend`, `bank2-frontend`
-- and pulls `wurstmeister/zookeeper`, `wurstmeister/kafka`.
-
-#### 4.3.2. Start the full distributed system
-
-```bash
-docker compose up -d
-```
-
-Verify containers:
-
-```bash
-docker ps
-```
-
-You should see:
-
-- `bank1-backend`, `bank2-backend`
-- `bank1-frontend`, `bank2-frontend`
-- `zookeeper`, `kafka`
-
----
-
-### 4.4. Accessing the services
-
-#### 4.4.1. Backends (FastAPI + Swagger)
-
-- Bank 1 API: <http://localhost:8001/docs>  
-- Bank 2 API: <http://localhost:8002/docs>
-
-Each backend is the same image; the **`BANK_ID`** environment variable
-(`BANK1`/`BANK2`) makes the instance behave as a different bank node.
-
-#### 4.4.2. Frontends (Teller / Admin dashboards)
-
-- Bank 1 UI: <http://localhost:3001>  
-- Bank 2 UI: <http://localhost:3002>
-
-The React apps talk to their own backends via:
-
-```yaml
-environment:
-  - REACT_APP_BACKEND_URL=http://bank1-backend:8000   # or bank2-backend
-```
-
-inside `docker-compose.yml`.
-
----
-
-## 5. Initial Admin Setup
-
-Each bank has its own **BankAdmin** table.
-
-### 5.1. Create test admins
-
-For each backend:
-
-1. Open Swagger:
-   - Bank 1 → <http://localhost:8001/docs>
-   - Bank 2 → <http://localhost:8002/docs>
-2. Call `POST /auth/create-test-admin`.
-
-Example response:
-
-```json
-{
-  "message": "Admin created",
-  "admin_id": "ADMIN1",
-  "password": "pass123",
-  "bank_id": "BANK1"
-}
-```
-
-Repeat for Bank 2 (will use `BANK2`).
-
-### 5.2. Log in to get JWT
-
-Use `POST /auth/login` on each backend:
-
-```json
-{
-  "admin_id": "ADMIN1",
-  "password": "pass123"
-}
-```
-
-This returns a JWT access token.  
-The React UI stores this token and sends it as `Authorization: Bearer <token>`.
-
----
-
-## 6. Example Demo Flows
-
-These are ideal to show in the presentation.
-
-### 6.1. Same-bank deposit (Bank 1)
-
-1. Open Bank 1 UI: <http://localhost:3001>.
-2. Log in with `ADMIN1 / pass123`.
-3. Create a **user** and **account** (e.g., checking).
-4. Perform a **deposit** into that account.
-
-Internally:
-
-- UI → `POST /transactions/deposit`
-- Backend:
-  - Validates JWT and `bank_id`
-  - Loads account where `account_number` and `bank_id` match
-  - Updates `Account.balance`
-  - Inserts `Transaction` row with `tx_type="deposit"`
-
-### 6.2. Cross-bank external transfer (BANK1 → BANK2)
-
-1. Create a destination user + account at Bank 2.
-2. In Bank 1 UI, initiate **external transfer**:
-   - `from_account` = Bank 1 account number
-   - `to_account` = Bank 2 account number
-   - `destination_bank` = `BANK2`
-   - `amount` = e.g., `100.0`
-
-**Bank 1 backend (`/transactions/external-transfer`):**
-
-- Debits Bank 1 account & writes `external_transfer_sent` transaction.
-- Publishes event to Kafka topic **`external-transfers`** via `kafka_producer.py`.
-
-Example event:
-
-```json
-{
-  "tx_id": "...",
-  "from_bank": "BANK1",
-  "destination_bank": "BANK2",
-  "to_account": "DEST-ACC-NUMBER",
-  "amount": 100.0
-}
-```
-
-**Bank 2 backend (Kafka consumer):**
-
-- `start_consumer(BANK2)` runs in a background thread (FastAPI startup hook).
-- Consumes `external-transfers` messages.
-- If `destination_bank == "BANK2"`:
-  - Looks up `to_account` in Bank 2 DB.
-  - Credits `Account.balance`.
-  - Inserts `Transaction` with `tx_type="external_transfer_received"`.
-
-Now you can show:
-
-- Bank 1 balance decreased.
-- Bank 2 balance increased.
-- Kafka logs showing produced and consumed messages.
-
----
-
-## 7. Cleaning / Resetting the Environment
-
-### 7.1. Stop containers
-
-```bash
-docker compose down
-```
-
-### 7.2. Stop + wipe DB data (delete volumes)
-
-```bash
-docker compose down --volumes
-```
-
-### 7.3. Optional: remove built images
-
-```bash
-docker image rm   singular-bank-standalone-app-bank1-backend:latest   singular-bank-standalone-app-bank2-backend:latest   singular-bank-standalone-app-bank1-frontend:latest   singular-bank-standalone-app-bank2-frontend:latest
-```
-
-(You can also remove by image ID via `docker image ls`.)
-
-Then you can rebuild from scratch using `docker compose build` and `docker compose up -d`.
-
----
-
-## 8. Benefits of This Design
-
-- **Real distributed system**  
-  Each bank is a separate service with its own database and UI.
-
-- **Loose coupling via Kafka**  
-  Banks do not call each other directly; they exchange **events** on a topic.
-
-- **Fault isolation**  
-  If one bank or its DB is down, other banks can still serve their customers.
-  Kafka buffers cross-bank transfer events until the destination bank is available.
-
-- **Scalability**  
-  Banks can scale horizontally (more backend replicas) independently.
-
-- **Clean layering & separation of concerns**
-  - Auth / JWT layer
-  - Business logic (FastAPI routes & services)
-  - Persistence (SQLAlchemy models)
-  - Messaging (Kafka producer/consumer)
-  - Presentation (React teller/admin UI)
-
----
-
-## 9. What We Learned
-
-Working on this system taught us:
-
-- How to design and reason about **distributed architectures** with multiple nodes.
-- Practical usage of **Kafka**:
-  - topics, groups, offsets
-  - producer/consumer patterns in Python.
-- Difference between:
-  - strongly consistent **local DB operations** (same-bank),
-  - **eventually consistent** cross-bank workflows.
-- Implementing **JWT-based authentication** and role-based access in FastAPI.
-- Containerizing services and wiring them using **Docker Compose**.
-- Designing a coherent **data model**:
-
-  - `BankAdmin`, `User`, `Account`, `Card`, `Transaction`.
-
-- Building a simple but functional **full-stack system** (React + FastAPI + Kafka).
-
----
-
-## 10. Future Work
-
-### 10.1. Head Bank / Central Registry
-
-- Add a separate **Head Bank** service to:
-  - Maintain a registry of banks (ID, endpoints, status).
-  - Provide APIs to **create/list/remove** banks.
-  - Offer a **global view** for reporting and compliance.
-
-### 10.2. Dynamic Bank Creation
-
-- Instead of hardcoding `BANK1` and `BANK2`:
-  - Expose an API like `POST /banks` on Head Bank.
-  - Dynamically spin up backend + frontend instances (Docker/Kubernetes).
-  - Register new banks into Kafka consumer groups and the registry.
-
-### 10.3. Observability
-
-- Add metrics, logs, and traces:
-  - Prometheus + Grafana dashboards.
-  - Distributed tracing for cross-bank flows.
-
-### 10.4. Robustness & Security
-
-- Idempotent external transfers and dead-letter queues for failed events.
-- TLS for external traffic, secure secret management for JWT keys.
-- Finer-grained RBAC (teller vs supervisor vs admin).
-
+##  Future Enhancements
+
+- Replace SQLite with PostgreSQL for higher concurrency workloads  
+- Head Bank registry service for dynamic bank discovery  
+- Dead-letter queues for failed events  
+- Prometheus + Grafana observability  
+- Kubernetes deployment  
+- Horizontal scaling of bank nodes  
+- Exactly-once semantics using Kafka transactional producers  
